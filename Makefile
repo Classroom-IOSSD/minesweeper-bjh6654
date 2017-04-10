@@ -9,7 +9,7 @@ $(TARGET) : $(OBJS)
 
 $(OBJS) : $(HEAD)
 
-.PHONY : clean
+.PHONY: clean
 
 clean :
 	rm $(OBJS) $(TARGET)
