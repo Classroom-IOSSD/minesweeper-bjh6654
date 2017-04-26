@@ -62,7 +62,7 @@ int x=0, y=0;
 // flag: input mode = 0, flag mode = 1, check mode = 2
 int game_mode=0;
 
-// 인접한 빈셀을 찾아내는 함수
+// 
 int uncover_blank_cell(int row, int col){
 	int value, rows[8], columns[8], i;
 
