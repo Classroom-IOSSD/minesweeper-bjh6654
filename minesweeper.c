@@ -21,6 +21,37 @@
 #define KMAG  "\x1B[35m"
 #define KCYN  "\x1B[36m"
 #define KWHT  "\x1B[37m"
+/*
+#define BIT(x) (0x01 << (x))
+#define BIT_SET(x,y) ((x) |= (y))
+#define BIT_CLEAR(x,y) ((x) &= (~(y)))
+#define BIT_FLIP(x,y) ((x) ^= (y))
+#define BITMASK_CHECK(x,y) (((x) & (y)) == (y))
+
+const unsigned int FLAG_MASK = BIT(4);
+const unsigned int UNCOVERED_MASK = BIT(5);
+const unsigned int MINE_MASK = BIT(6);
+*/
+/*
+inline _Bool has_mine(unsigned int cell) {
+        return BITMASK_CHECK(cell, MINE_MASK);
+}
+inline void put_mine(unsigned int cell) {
+        BIT_SET(cell, MINE_MASK);
+}
+inline _Bool has_uncovered(unsigned int cell) {
+        return BITMASK_CHECK(cell, UNCOVERED_MASK);
+}
+inline _Bool has_flag(unsigned int cell) {
+        return BITMASK_CHECK(cell, FLAG_MASK);
+}
+inline void remove_flag(unsigned int cell) {
+        BIT_CLEAR(cell, FLAG_MASK);
+}
+inline void uncovered(unsigned int cell) {
+        BIT_SET(cell, UNCOVERED_MASK);
+}
+*/
 
 
 // global variables
@@ -31,8 +62,7 @@ int x=0, y=0;
 // flag: input mode = 0, flag mode = 1, check mode = 2
 int game_mode=0;
 
-/* 뭘 바꿔야 할지 전혀 모르겠습니다...*/
-/*This is a recursive function which uncovers blank cells while they are adjacent*/
+// 인접한 빈셀을 찾아내는 함수
 int uncover_blank_cell(int row, int col){
 	int value, rows[8], columns[8], i;
 
@@ -56,7 +86,8 @@ int uncover_blank_cell(int row, int col){
 
 		if( (rows[i] >= 0 && rows[i] < MAX) && (columns[i] >= 0 && columns[i] < MAX) ){		// to prevent negative index and out of bounds
 			if(value > 0 && value <= 8)
-				table_array[rows[i]][columns[i]] += 10;										// it is a cell with 1-8 number so we need to uncover
+                uncovered(table_array[rows[i]][columns[i]]); // 뭔가.............???????
+				//table_array[rows[i]][columns[i]] += 10;										// it is a cell with 1-8 number so we need to uncover
 			else if(value == 0)
 				uncover_blank_cell(rows[i], columns[i]);
 		}
@@ -86,15 +117,15 @@ void print_table() {
 			}
 			value = table_array[i][j];
 
-			if((value >= 0 && value <= 8) || value == 0 || value == 99)
+			if(!has_uncovered(table_array[i][j]))
 				printf("|X");
-			else if(value == 10) // clean area
+			else if(value == 32) // clean area
 				printf("|%s%d%s",KCYN, value - 10,KNRM);
-			else if(value == 11) // the number of near mine is 1
+			else if(value == 33) // the number of near mine is 1
 				printf("|%s%d%s",KYEL, value - 10,KNRM);
-			else if(value > 11 && value <= 18) // the number of near mine is greater than 1
+			else if(value > 33 && value <= 40) // the number of near mine is greater than 1
 				printf("|%s%d%s",KRED, value - 10,KNRM);
-			else if((value >= 20 && value <= 28) || value == 100)
+			else if(has_flag(table_array[i][j]))
 				printf("|%sF%s",KGRN,KNRM);
 			else
 				printf("ERROR"); // test purposes
@@ -140,14 +171,14 @@ new_game:
 			table_array[i][j] = 0;
 
 	for(i = 0; i < remain_mines; i++){
-		/* initialize random seed: */
+		// 랜덤 시드
 
 		r = rand() % 10;					// it generates a integer in the range 0 to 9
 		c = rand() % 10;
-		
+
 		// put mines
-		if(table_array[r][c] != 99){
-			table_array[r][c] = 99;
+		if(!has_mine(table_array[r][c])) {
+			BIT_SET(table_array[r][c], MINE_MASK);
 
 			// Get position of adjacent cells of current cell
 			rows[0] = r - 1;	columns[0] = c + 1;
@@ -162,12 +193,13 @@ new_game:
 			for(j = 0; j < 8; j++){
 				value = table_array[rows[j]][columns[j]];
 				if( (rows[j] >= 0 && rows[j] < MAX) && (columns[j] >= 0 && columns[j] < MAX) ){		// to prevent negative index and out of bounds
-						if(value != 99)																// to prevent remove mines
+						if(!has_mine(table_array[rows[j]][columns[j]]))	{															// to prevent remove mines
 							table_array[rows[j]][columns[j]] += 1;									// sums 1 to each adjacent cell
-				}
-			}
+				        }
+			    }
 			
-		}else{								// to make sure that there are the properly number of mines in table
+		    }
+        }else{								// to make sure that there are the properly number of mines in table
 			i--;
 			continue;
 		}
@@ -213,13 +245,13 @@ flag_mode:
 			else if(direction == '\n') {
 				value = table_array[y][x];
 	
-				if (value == 99){					// mine case
+				if (has_mine(table_array[y][x])){					// mine case
 					table_array[y][x] += 1;
 					remain_mines -= 1;				// mine found
-				}else if(value >= 0 && value <= 8){	// number of mines case (the next cell is a mine)
-					table_array[y][x] += 20;
-				}else if(value >= 20 && value <= 28){
-					table_array[y][x] -= 20;
+				}else if(!has_mine(table_array[y][x])){	// number of mines case (the next cell is a mine)
+					BIT_SET(table_array[y][x], FLAG_MASK);
+				}else if(has_flag(table_array[y][x])){
+					remove_flag(table_array[y][x]);
 				}
 				
 				if(remain_mines == 0)
@@ -261,10 +293,10 @@ check_mode:
 				value = table_array[y][x];
 				if(value == 0)						// blank case
 					uncover_blank_cell(y, x);	
-				else if(value == 99)				// mine case
+				else if(has_mine(table_array[y][x]))				// mine case
 					goto end_of_game;
 				else if(value > 0 && value <= 8)	// number case (the next cell is a mine)
-					table_array[y][x] += 10;
+					uncovered(table_array[y][x]);
 
 			//	break;
 			} 
